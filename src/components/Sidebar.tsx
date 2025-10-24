@@ -1,5 +1,5 @@
 import React from 'react';
-import { MenuItem } from '../types';
+import { LayoutDashboard, Package, ShoppingBag, FolderOpen } from 'lucide-react';
 import '../styles/Sidebar.css';
 
 interface SidebarProps {
@@ -8,11 +8,11 @@ interface SidebarProps {
 }
 
 const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab }) => {
-  const menuItems: MenuItem[] = [
-    { key: 'dashboard', label: 'Dashboard', icon: '📊' },
-    { key: 'orders', label: 'Orders', icon: '📦' },
-    { key: 'products', label: 'Products', icon: '🛍️' },
-    { key: 'categories', label: 'Categories', icon: '📑' }
+  const menuItems = [
+    { key: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    { key: 'orders', label: 'Orders', icon: Package },
+    { key: 'products', label: 'Products', icon: ShoppingBag },
+    { key: 'categories', label: 'Categories', icon: FolderOpen }
   ];
 
   return (
@@ -21,16 +21,19 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab }) => {
         <h2>Admin Panel</h2>
       </div>
       <nav className="sidebar-nav">
-        {menuItems.map((item: MenuItem) => (
-          <button
-            key={item.key}
-            className={`nav-item ${activeTab === item.key ? 'active' : ''}`}
-            onClick={() => setActiveTab(item.key as any)}
-          >
-            <span className="nav-icon">{item.icon}</span>
-            <span className="nav-label">{item.label}</span>
-          </button>
-        ))}
+        {menuItems.map((item) => {
+          const Icon = item.icon;
+          return (
+            <button
+              key={item.key}
+              className={`nav-item ${activeTab === item.key ? 'active' : ''}`}
+              onClick={() => setActiveTab(item.key as any)}
+            >
+              <Icon className="nav-icon" size={20} />
+              <span className="nav-label">{item.label}</span>
+            </button>
+          );
+        })}
       </nav>
     </div>
   );

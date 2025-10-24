@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
+import { Filter, X } from 'lucide-react';
+import '../styles/Table.css';
 
 interface Order {
   id: string;
@@ -14,11 +16,24 @@ interface Order {
 
 const Orders: React.FC = () => {
   const [orders, setOrders] = useState<Order[]>([]);
+  const [filteredOrders, setFilteredOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showFilters, setShowFilters] = useState(false);
+
+  const [filters, setFilters] = useState({
+    status: '',
+    customer: '',
+    dateFrom: '',
+    dateTo: ''
+  });
 
   useEffect(() => {
     fetchOrders();
   }, []);
+
+  useEffect(() => {
+    applyFilters();
+  }, [orders, filters]);
 
   const fetchOrders = async () => {
     try {
@@ -28,13 +43,60 @@ const Orders: React.FC = () => {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      if (data) setOrders(data);
+      if (data) {
+        setOrders(data);
+        setFilteredOrders(data);
+      }
     } catch (error) {
       console.error('Error fetching orders:', error);
     } finally {
       setLoading(false);
     }
   };
+
+  const applyFilters = () => {
+    let filtered = [...orders];
+
+    if (filters.status) {
+      filtered = filtered.filter(order =>
+        order.status.toLowerCase() === filters.status.toLowerCase()
+      );
+    }
+
+    if (filters.customer) {
+      filtered = filtered.filter(order =>
+        order.customer_name.toLowerCase().includes(filters.customer.toLowerCase()) ||
+        order.customer_email.toLowerCase().includes(filters.customer.toLowerCase())
+      );
+    }
+
+    if (filters.dateFrom) {
+      const fromDate = new Date(filters.dateFrom);
+      filtered = filtered.filter(order =>
+        new Date(order.created_at) >= fromDate
+      );
+    }
+
+    if (filters.dateTo) {
+      const toDate = new Date(filters.dateTo);
+      toDate.setHours(23, 59, 59, 999);
+      filtered = filtered.filter(order =>
+        new Date(order.created_at) <= toDate
+      );
+    }
+
+    setFilteredOrders(filtered);
+  };
+
+  const clearFilters = () => {
+    setFilters({
+      status: '',
+      customer: '',
+      dateFrom: '',
+      dateTo: ''
+    });
+  };
+
   const getStatusClass = (status: string): string => {
     switch (status.toLowerCase()) {
       case 'completed': return 'status-completed';
@@ -56,10 +118,6 @@ const Orders: React.FC = () => {
     return 'N/A';
   };
 
-  const handleEdit = (orderId: string): void => {
-    console.log('Edit order:', orderId);
-  };
-
   const handleDelete = async (orderId: string): Promise<void> => {
     if (confirm('Are you sure you want to delete this order?')) {
       try {
@@ -73,6 +131,8 @@ const Orders: React.FC = () => {
     }
   };
 
+  const activeFilterCount = Object.values(filters).filter(v => v !== '').length;
+
   if (loading) {
     return <div className="table-container"><p>Loading...</p></div>;
   }
@@ -81,7 +141,78 @@ const Orders: React.FC = () => {
     <div className="table-container">
       <div className="table-header">
         <h1>Orders Management</h1>
-        <button className="btn-primary">Add New Order</button>
+        <div className="header-actions">
+          <button
+            className={`btn-filter ${showFilters ? 'active' : ''}`}
+            onClick={() => setShowFilters(!showFilters)}
+          >
+            <Filter size={16} />
+            Filters {activeFilterCount > 0 && `(${activeFilterCount})`}
+          </button>
+        </div>
+      </div>
+
+      {showFilters && (
+        <div className="filters-panel">
+          <div className="filters-grid">
+            <div className="form-group">
+              <label htmlFor="status">Status</label>
+              <select
+                id="status"
+                value={filters.status}
+                onChange={(e) => setFilters({ ...filters, status: e.target.value })}
+              >
+                <option value="">All Statuses</option>
+                <option value="pending">Pending</option>
+                <option value="processing">Processing</option>
+                <option value="shipped">Shipped</option>
+                <option value="completed">Completed</option>
+              </select>
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="customer">Customer</label>
+              <input
+                type="text"
+                id="customer"
+                placeholder="Search by name or email"
+                value={filters.customer}
+                onChange={(e) => setFilters({ ...filters, customer: e.target.value })}
+              />
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="dateFrom">From Date</label>
+              <input
+                type="date"
+                id="dateFrom"
+                value={filters.dateFrom}
+                onChange={(e) => setFilters({ ...filters, dateFrom: e.target.value })}
+              />
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="dateTo">To Date</label>
+              <input
+                type="date"
+                id="dateTo"
+                value={filters.dateTo}
+                onChange={(e) => setFilters({ ...filters, dateTo: e.target.value })}
+              />
+            </div>
+          </div>
+
+          {activeFilterCount > 0 && (
+            <button className="btn-clear-filters" onClick={clearFilters}>
+              <X size={16} />
+              Clear Filters
+            </button>
+          )}
+        </div>
+      )}
+
+      <div className="table-info">
+        <p>Showing {filteredOrders.length} of {orders.length} orders</p>
       </div>
 
       <table className="data-table">
@@ -98,10 +229,10 @@ const Orders: React.FC = () => {
           </tr>
         </thead>
         <tbody>
-          {orders.length === 0 ? (
+          {filteredOrders.length === 0 ? (
             <tr><td colSpan={8}>No orders found</td></tr>
           ) : (
-            orders.map((order: Order) => (
+            filteredOrders.map((order: Order) => (
               <tr key={order.id}>
                 <td>{order.order_number}</td>
                 <td>{order.customer_name}</td>
@@ -115,12 +246,6 @@ const Orders: React.FC = () => {
                 </td>
                 <td>{formatDate(order.created_at)}</td>
                 <td>
-                  <button
-                    className="btn-edit"
-                    onClick={() => handleEdit(order.id)}
-                  >
-                    Edit
-                  </button>
                   <button
                     className="btn-delete"
                     onClick={() => handleDelete(order.id)}
